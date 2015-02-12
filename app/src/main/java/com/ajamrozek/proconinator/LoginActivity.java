@@ -31,16 +31,20 @@ import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.SignInButton;
 
 import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -56,14 +60,6 @@ import java.util.List;
  * and follow the steps in "Step 1" to create an OAuth 2.0 client for your package.
  */
 public class LoginActivity extends PlusBaseActivity implements LoaderCallbacks<Cursor> {
-
-    /**
-     * A dummy authentication store containing known user names and passwords.
-     * TODO: remove after connecting to a real authentication system.
-     */
-    private static final String[] DUMMY_CREDENTIALS = new String[]{
-            "foo@example.com:hello", "bar@example.com:world"
-    };
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
      */
@@ -360,35 +356,31 @@ public class LoginActivity extends PlusBaseActivity implements LoaderCallbacks<C
 
         @Override
         protected Boolean doInBackground(Void... params) {
-            // TODO: attempt authentication against a network service.
-
             HttpClient httpClient = new DefaultHttpClient();
 
             String apiUrl = getString(R.string.api_base_url);
             apiUrl += "/accountapi/login";
+            HttpPost request = new HttpPost(apiUrl);
+            StringEntity viewModel = null;
+
             try {
-                HttpPost request = new HttpPost(apiUrl);
-                JSONObject viewModel = new JSONObject();
-                viewModel.put("UserName", mEmail);
+                viewModel = new StringEntity("{\"UserName\":" + mEmail +",\"Password\":" + mPassword + "} ");
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
 
-                StringEntity apiParams = new StringEntity("viewModel:{\"name\":\"myname\",\"age\":\"20\"} ", "UTF8");
-                request.addHeader("content-type", "application/json");
-                request.setEntity(apiParams);
+            request.addHeader("content-type", "application/json");
+            request.setEntity(viewModel);
+
+            int responseCode = 0;
+            try {
                 HttpResponse response = httpClient.execute(request);
-            } catch (InterruptedException e) {
-                return false;
+                responseCode = response.getStatusLine().getStatusCode();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
 
-            for (String credential : DUMMY_CREDENTIALS) {
-                String[] pieces = credential.split(":");
-                if (pieces[0].equals(mEmail)) {
-                    // Account exists, return true if the password matches.
-                    return pieces[1].equals(mPassword);
-                }
-            }
-
-            // TODO: register the new account here.
-            return true;
+            return responseCode == 200;
         }
 
         @Override
